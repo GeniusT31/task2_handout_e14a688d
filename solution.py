@@ -112,8 +112,10 @@ class SWAInferenceHandler(object):
         train_xs: torch.Tensor,
         model_dir: pathlib.Path,
         # TODO(1): change inference_mode to InferenceMode.SWAG_DIAGONAL
+        inference_mode: InferenceMode = InferenceMode.SWAG_DIAGONAL,
+
         # TODO(2): change inference_mode to InferenceMode.SWAG_FULL
-        inference_mode: InferenceMode = InferenceMode.MAP,
+        # inference_mode: InferenceMode = InferenceMode.SWAG_FULL,
         # TODO(2): optionally add/tweak hyperparameters
         swag_training_epochs: int = 30,
         swag_lr: float = 0.045,
@@ -153,6 +155,10 @@ class SWAInferenceHandler(object):
         #  as a dictionary that maps from weight name to values.
         #  Hint: you never need to consider the full vector of weights,
         #  but can always act on per-layer weights (in the format that _create_weight_copy() returns)
+        if inference_mode == InferenceMode.SWAG_DIAGONAL:
+            self.swag_mean = self._create_weight_copy()
+            self.swag_mean_sq = self.create_weight_copy()
+
 
         # Full SWAG
         # TODO(2): create attributes for SWAG-full
