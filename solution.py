@@ -259,16 +259,30 @@ class SWAInferenceHandler(object):
             self._calibration_threshold = 0.0
             return
 
-        # TODO(1): pick a prediction threshold, either constant or adaptive.
-        self._calibration_threshold = 2.0 / 3.0
 
-        # TODO(2): perform additional calibration if desired.
-        #  Feel free to remove or change the prediction threshold.
-        val_images, val_snow_labels, val_cloud_labels, val_labels = validation_data.tensors
-        assert val_images.size() == (140, 3, 60, 60)  # N x C x H x W
-        assert val_labels.size() == (140,)
-        assert val_snow_labels.size() == (140,)
-        assert val_cloud_labels.size() == (140,)
+        val_x, _, _, val_y = validation_data.tensors
+        mask = val_y != -1
+        x_cal = val_x[mask]
+        y_cal = val_y[mask].long()
+
+        # logits from (current) model
+        self.network.eval()
+        loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(x_cal), batch_size=64, shuffle=False)
+        with torch.no_grad():
+            logits = torch.cat([self.network(bx) for (bx,) in loader], dim=0)
+
+        T = torch.nn.Parameter(torch.tensor(1.0))
+        opt = torch.optim.LBFGS([T], lr=0.1, max_iter=50, line_search_fn="strong_wolfe")
+        nll = torch.nn.CrossEntropyLoss()
+
+        def closure():
+            opt.zero_grad()
+            loss = nll(logits / T.clamp_min(1e-3), y_cal)
+            loss.backward()
+            return loss
+
+        opt.step(closure)
+        self._temperature = float(T.detach().clamp_min(1e-3))
 
     def predict_probabilities_swag(self, loader: torch.utils.data.DataLoader) -> torch.Tensor:
         """
@@ -290,7 +304,7 @@ class SWAInferenceHandler(object):
                 for (batch_images,) in loader:
                     sample_logits.append(self.network(batch_images))
             sample_logits = torch.cat(sample_logits, dim=0)
-            sample_probs = torch.softmax(sample_logits, dim=-1)
+            sample_probs = torch.softmax(sample_logits / getattr(self, "_temperature", 1.0), dim=-1)
             model_predictions.append(sample_probs)
 
         assert len(model_predictions) == self.num_bma_samples
