@@ -270,6 +270,14 @@ class SWAInferenceHandler(object):
                 if (epoch + 1) % self.swag_update_interval == 0:
                     self.update_swag_statistics()
 
+        if self.swag_n == 0:
+            raise RuntimeError("SWAG stats are empty: no snapshots were collected. "
+                       "Check swag_update_interval and update_swag_statistics().")
+        self.swag_var = {
+            name: torch.clamp(self.swag_sq_mean[name] - self.swag_mean[name] ** 2, min=1e-30)
+            for name in self.swag_mean.keys()
+}
+
     def run_calibration(self, validation_data: torch.utils.data.Dataset) -> None:
         """
         Calibrate your predictions using a small validation set.
