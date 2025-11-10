@@ -121,7 +121,7 @@ class SWAInferenceHandler(object):
         swag_training_epochs: int = 40,
         swag_lr: float = 0.045,
         swag_update_interval: int = 1,
-        max_rank_deviation_matrix: int = 15,
+        max_rank_deviation_matrix: int = 20,
         num_bma_samples: int = 30,
     ):
         """
