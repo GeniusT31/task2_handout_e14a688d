@@ -381,7 +381,6 @@ class SWAInferenceHandler(object):
 
         # Instead of acting on a full vector of parameters, all operations can be done on per-layer parameters.
         for name, param in self.network.named_parameters():
-            device = param.device
             # SWAG-diagonal part
             z_diag = torch.randn(param.size(), device=device)
             # TODO(1): Sample parameter values for SWAG-diagonal
